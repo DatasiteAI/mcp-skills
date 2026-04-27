@@ -9,6 +9,14 @@ description: >
   names", "rename scanned documents", "make the naming consistent", "tidy up the
   data room", or any request to improve, clean, or normalise document naming across
   a Datasite project. Never apply any rename without explicit user confirmation.
+  Do not use for document quality or PII checks — use document-quality-check for that.
+  Never rename files without explicit user confirmation.
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, renaming, file-management, blueflame]
 ---
 
 # Smart File Renaming
@@ -117,57 +125,11 @@ Only use content search when the filename alone is genuinely ambiguous. Don't re
 
 ## Step 4 — Apply naming conventions by document category
 
-Use the conventions below to propose new names. Conventions are designed to be:
-- **Scannable** — buyers can understand what a file is without opening it
-- **Sortable** — date formats ensure chronological sort order
-- **Consistent** — all files of the same type follow the same pattern
+Read `references/naming-conventions.md` for the full naming convention tables before proposing renames.
 
-### Financial documents
-| Document type | Convention | Example |
-|---|---|---|
-| Audited annual accounts | `[Company] - Audited Accounts - FY[YYYY].pdf` | `Apex Ltd - Audited Accounts - FY2024.pdf` |
-| Management accounts (monthly) | `[Company] - Management Accounts - [Mon YYYY].pdf` | `Apex Ltd - Management Accounts - Mar 2025.pdf` |
-| Management accounts (quarterly) | `[Company] - Management Accounts - Q[N] FY[YYYY].pdf` | `Apex Ltd - Management Accounts - Q3 FY2025.pdf` |
-| Financial model / projections | `[Company] - Financial Model - [YYYY-MM-DD].xlsx` | `Apex Ltd - Financial Model - 2025-03-01.xlsx` |
-| Board pack / management presentation | `[Company] - Board Pack - [Mon YYYY].pdf` | `Apex Ltd - Board Pack - Jan 2025.pdf` |
+Conventions cover: Financial documents, Tax documents, Corporate documents, Contracts (use counterparty name as the primary identifier), IP and regulatory documents.
 
-### Tax documents
-| Document type | Convention | Example |
-|---|---|---|
-| Federal / national tax return | `[Company] - [Jurisdiction] Tax Return - FY[YYYY].pdf` | `Apex Ltd - Federal Tax Return - FY2024.pdf` |
-| State / local tax return | `[Company] - [State] Tax Return - FY[YYYY].pdf` | `Apex Ltd - California Tax Return - FY2024.pdf` |
-| VAT return | `[Company] - VAT Return - [Q/Period] [YYYY].pdf` | `Apex Ltd - VAT Return - Q4 2024.pdf` |
-| Tax correspondence | `[Company] - [Authority] Correspondence - [YYYY-MM-DD].pdf` | `Apex Ltd - HMRC Correspondence - 2024-11-15.pdf` |
-
-### Corporate documents
-| Document type | Convention | Example |
-|---|---|---|
-| Certificate of incorporation | `[Company] - Certificate of Incorporation.pdf` | |
-| Articles of association / by-laws | `[Company] - Articles of Association.pdf` | |
-| Board minutes | `[Company] - Board Minutes - [YYYY-MM-DD].pdf` | `Apex Ltd - Board Minutes - 2024-09-12.pdf` |
-| Shareholder agreement | `[Company] - Shareholder Agreement - [YYYY].pdf` | |
-| Cap table | `[Company] - Cap Table - [YYYY-MM-DD].xlsx` | |
-
-### Contracts — use counterparty name as the primary identifier
-| Document type | Convention | Example |
-|---|---|---|
-| Customer / client contract | `[Client Name] - [Contract Type] - [YYYY].pdf` | `Tesco PLC - Master Services Agreement - 2023.pdf` |
-| Vendor / supplier contract | `[Supplier Name] - [Contract Type] - [YYYY].pdf` | `AWS - Cloud Services Agreement - 2024.pdf` |
-| Employment agreement | `[Last Name, First Name] - Employment Agreement - [YYYY].pdf` | `Smith, James - Employment Agreement - 2022.pdf` |
-| Consulting / contractor agreement | `[Name] - Consulting Agreement - [YYYY].pdf` | |
-| Lease agreement | `[Property Address or Name] - Lease Agreement - [YYYY].pdf` | `123 High Street London - Lease Agreement - 2021.pdf` |
-| NDA | `[Counterparty] - NDA - [YYYY-MM-DD].pdf` | |
-
-### IP and regulatory documents
-| Document type | Convention | Example |
-|---|---|---|
-| Patent | `Patent - [Title or Ref No] - [YYYY].pdf` | |
-| Trademark registration | `Trademark - [Mark Name] - [Jurisdiction] - [YYYY].pdf` | |
-| Regulatory licence | `[Licence Type] - [Issuing Body] - Expires [YYYY-MM-DD].pdf` | `Customs Broker Licence - CBP - Expires 2026-04-30.pdf` |
-| Insurance policy | `[Insurer] - [Policy Type] - [YYYY-YYYY].pdf` | `AXA - D&O Insurance - 2024-2025.pdf` |
-
-### When date is unknown
-If you cannot determine the year from folder context or content search, use `[YYYY]` as a placeholder rather than guessing — this is a signal for the deal team to complete.
+The general pattern is `[Company] - [Document Type] - [Date or Period].ext` with dates in `YYYY-MM-DD` or `Mon YYYY` format for consistent sort order. Contracts use counterparty name as the lead element. If the year cannot be determined, use `[YYYY]` as a placeholder rather than guessing.
 
 ---
 
@@ -260,3 +222,29 @@ Present these as: "**[N] files flagged for manual review** — I couldn't confid
 **Never guess a year.** A wrong year on an audited accounts file is worse than a placeholder `[YYYY]`. If the year isn't clear, mark it.
 
 **Respect intentional names.** If a file already has a clear, professional, and consistent name (e.g. `Apex Ltd - Audited Accounts - FY2024.pdf`), don't rename it just because you can. Only rename files that genuinely need it.
+
+## Performance Notes
+
+- **Never guess a year or counterparty name.** A wrong year on an audited accounts file is worse than a placeholder `[YYYY]`.
+- Do not rename every document — only rename files that genuinely need it. Respect intentional names.
+- Complete the full before/after table before applying any rename. Do not call `updateContent` until the user explicitly confirms.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+

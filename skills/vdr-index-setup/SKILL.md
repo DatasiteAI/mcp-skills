@@ -10,6 +10,14 @@ description: >
   deal room structure or import an index from a spreadsheet or reference deal. This skill
   MUST be used whenever the user is starting a new deal room or wants to customise the
   folder hierarchy before documents are uploaded.
+  Do not use to audit or review an existing data room — use gap-analysis,
+  document-quality-check, or risk-analysis-audit for that.
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, index, folder-structure, setup]
 ---
 
 # VDR Index Setup
@@ -39,12 +47,7 @@ When in doubt: if it is not the single top-level container for the whole project
 
 
 
-> ⚠️ **Blueflame content guard — mandatory**
-> `searchDocuments` is the only permitted source of document content.
-> - If `searchDocuments` returns an **activation link** instead of results, **stop immediately**.
-> - Do **not** attempt to answer content-level questions using Claude's training knowledge, general M&A knowledge, or inference from file names.
-> - Tell the user: *"This check requires Blueflame to be enabled on this project. Please activate it via the link provided, then re-run."*
-> - All findings, risk flags, gap identifications, Q&A answers, and quality issues **must** be sourced exclusively from tool results.
+> ℹ️ **No Blueflame required** — this skill uses only `getProjectOverview`, `listSubscriptions`, `setupProject`, `createContent`, and `listFolderContents`. It never calls `searchDocuments`. All functionality is available without Blueflame activation.
 
 > **`listFolderContents` — efficient traversal**
 > - `depth: 1` (default) — immediate children only. Use for targeted lookups.
@@ -218,7 +221,11 @@ Top-level nodes in `contentTree` become filerooms; nested nodes become folders.
 **Error handling:** if a folder fails, note it and continue. Report failures at the end with the folder path so the user can investigate.
 
 **On completion:**
-> "Done ✓ — **[N] folders** created in **[Fileroom Name]**. Top-level sections: [list]. Let me know if you'd like to adjust anything."
+> "Done ✓ — **[N] folders** created in **[Fileroom Name]**. Top-level sections: [list].
+> 🔗 Open in Datasite: `https://app.global.datasite.com/en/platform/prepare/[projectId]/overview`
+> Let me know if you’d like to adjust anything or invite team members."
+
+**Important:** Always use the URL format above when linking to a Datasite project — `https://app.global.datasite.com/en/platform/prepare/{projectId}/overview`. Never construct a Datasite URL from memory or training knowledge; the format above is the only correct one.
 
 ---
 
@@ -227,3 +234,23 @@ Top-level nodes in `contentTree` become filerooms; nested nodes become folders.
 Read `references/sector-templates.md` for the full folder structures for each sector. Load only the section(s) relevant to the current deal — there's no need to read the whole file.
 
 **Sectors covered:** Due Diligence (universal baseline), Technology, Healthcare, Healthcare Capital Raise, Manufacturing, Retail, Financial Services, Legal, Oil & Gas, Real Estate, Telecommunications, Transportation, Defence.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+

@@ -10,6 +10,13 @@ description: >
   outstanding", "build a diligence dashboard", or any request to track document
   delivery against buyer requests. Use proactively whenever a buyer has submitted
   a request list and the deal team needs to manage and track responses.
+  Do not use for overall data room structural gap analysis — use gap-analysis for that.
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, irl, due-diligence, tracking, blueflame]
 ---
 
 # IRL Tracker — Due Diligence Document Tracker
@@ -316,3 +323,29 @@ After rendering the dashboard, summarise:
 **AI matches are provisional.** Every item starts as "Provided (AI)" at best. The deal team's confirmation step is what makes it Complete. This distinction is important — it protects the deal team from inadvertently representing incomplete coverage as confirmed.
 
 **Store metadata, not binaries.** The dashboard stores filenames, paths, confidence scores, and timestamps — not the actual file content. This keeps the HTML lightweight and shareable.
+
+## Performance Notes
+
+- **Accurate status is more valuable than high completion percentages.** Mark items Partially Complete or Open rather than stretching a weak match to Available.
+- Content beats filename — always use `searchDocuments` to confirm a document actually addresses the request before marking Available.
+- AI matches are provisional by design. The deal team's confirmation step is what makes an item Complete.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+

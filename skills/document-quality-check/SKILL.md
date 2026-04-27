@@ -9,6 +9,14 @@ description: >
   any blank or broken files", "check for unredacted personal data", or any request
   to verify that documents in the data room are complete, accessible, and safe to
   share. Use this skill proactively before a data room goes live.
+  Do not use for renaming files (use smart-file-renaming) or for identifying
+  missing sections (use gap-analysis).
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, document-quality, pii, redaction, blueflame]
 ---
 
 # Document Quality Check
@@ -52,14 +60,19 @@ When in doubt: if it is not the single top-level container for the whole project
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** infer document content, PII presence, or redaction quality from Claude’s training knowledge.
 > - **Phase A** (Checks 1–7, metadata checks) uses `listFolderContents` only — always free. Complete Phase A fully first.
-> - **Phase B** (Checks 8–10: PII scan, redaction quality, broken references) requires `searchDocuments`. When you reach Phase B, attempt one call. If it returns an **activation link** instead of results, **do not silently skip** — present Phase A findings first, then say:
+> - **Phase B** (Checks 8–10: PII scan, redaction quality, broken references) requires `searchDocuments`. When you reach Phase B, attempt one call. If it returns an **activation link** instead of results:
+>   1. **Do not generate the HTML dashboard yet** — ask the Blueflame question first as a plain conversational message
+>   2. Summarise Phase A findings in plain text (e.g. "I found X password-protected files, Y duplicates, Z files with no extension")
+>   3. Then ask:
 >
->   > "I’ve completed the 7 metadata checks above. To also run PII scanning, redaction quality checks, and broken reference detection, Blueflame AI search needs to be activated on this project:
+>   > "I’ve completed the 7 metadata checks — here’s what I found: [plain text summary]. To also run PII scanning, redaction quality checks, and broken reference detection, Blueflame AI search needs to be activated on this project:
 >   > 🔗 **Activate Blueflame:** [activation link]
 >   > **With Blueflame:** I’ll scan document content for exposed personal data (names, NI numbers, bank details), verify that redacted text can’t be read in the file layer, and check for broken cross-references inside documents — the checks buyers and their lawyers look for most.
->   > Would you like to activate now to run the content checks, or shall I present the Phase A findings I already have?"
+>   > Would you like to activate now, or shall I produce the dashboard with the Phase A findings only?"
 >
-> Do not silently mark Phase B checks as skipped without first presenting this choice to the user.
+>   4. **Wait for the user’s response before producing any dashboard or output file.**
+>
+> Do not embed the Blueflame activation prompt inside the HTML dashboard — it must appear as an interactive conversational question before any output is generated.
 
 > **`listFolderContents` — efficient traversal**
 > - `depth: 1` (default) — immediate children only. Use for targeted lookups.
@@ -437,3 +450,29 @@ Then offer:
 **Failed documents are the most urgent fix.** A buyer who clicks a document and gets an error immediately loses confidence in the deal team's preparation. Every failed document should be actioned before go-live.
 
 **Be specific in recommended actions.** "Remove password protection and re-upload" is useful. "Fix document" is not.
+
+## Performance Notes
+
+- **Do not skip checks to save time.** A missed password-protected file or undetected PII exposure is a serious issue that could delay go-live or create a compliance breach.
+- Run all Phase A checks from a single `listFolderContents` pass — avoid repeated calls.
+- Context matters before flagging: always check filename and folder path before raising a severity issue.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+

@@ -10,6 +10,14 @@ description: >
   or any request to assess completeness of the data room by section. Use this skill
   proactively whenever a deal team is preparing to launch a data room and wants to
   know what still needs to be uploaded or organised.
+  Do not use for document quality issues such as PII or redaction (use document-quality-check),
+  or for drafting Q&A responses (use bulk-qa-answers).
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, gap-analysis, completeness, blueflame]
 ---
 
 # Data Room Gap Analysis
@@ -49,11 +57,12 @@ When in doubt: if it is not the single top-level container for the whole project
 > - **Steps 1–4** (structural gap analysis) use `listFolderContents` only — always free. Complete these regardless of Blueflame status.
 > - **Step 5** (contract cross-referencing) requires `searchDocuments`. When you reach it, attempt one call. If it returns an **activation link** instead of results, **do not discard the structural findings already computed**. Present Steps 1–4 results first, then say:
 >
->   > "I've completed the structural gap analysis above across [N] sections. To also cross-reference your customer, employee, and vendor lists against the contracts folders, Blueflame AI search needs to be activated:
+>   > "I've completed the structural gap analysis. Summary: [list top findings per section in plain text — e.g. 'Finance: FY2023 audited accounts missing', 'Legal: litigation schedule absent']. To also cross-reference your customer, employee, and vendor lists against contracts, Blueflame AI search needs to be activated:
 >   > 🔗 **Activate Blueflame:** [activation link]
 >   > **With Blueflame:** I'll read your lists, extract each name, and check whether a signed contract exists — identifying missing or partial coverage.
->   > Would you like to activate now to complete the cross-referencing, or shall I present the structural findings I already have?"
+>   > Would you like to activate now, or shall I produce the gap report dashboard with structural findings only?"
 >
+> **Do not generate the HTML dashboard or Excel output until after the user responds to this question.**
 > - All content findings **must** be sourced exclusively from tool results.
 
 > **`listFolderContents` — efficient traversal**
@@ -308,3 +317,29 @@ Then offer:
 **Don't penalise intentional omissions.** Some folders may be empty by design (e.g. a "Closing Documents" folder at the start of a process). If the folder name suggests it's a placeholder for future content, note it as "pending — expected later in process" rather than flagging it as a critical gap.
 
 **Cross-referencing is best-effort.** Customer and employee lists may not always be present or clearly named. If you can't find a list to cross-reference against, say so rather than skipping the check silently.
+
+## Performance Notes
+
+- Work through every section systematically. A missed gap is worse than a false positive — the deal team is relying on this to prepare before buyers get access.
+- Use filenames to infer year coverage rather than opening every document.
+- Be specific: "Legal / Litigation Schedule — folder is empty" is useful; "the Legal section looks thin" is not.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+

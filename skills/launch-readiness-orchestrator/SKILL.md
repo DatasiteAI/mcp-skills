@@ -13,6 +13,12 @@ description: >
   structured sign-off view. Do not use other individual audit skills (gap-analysis,
   document-quality-check, risk-analysis-audit) when this skill is active — this
   skill orchestrates all three in one pass.
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, launch, readiness, orchestration]
 ---
 
 # Launch Readiness Orchestrator
@@ -55,12 +61,18 @@ When in doubt: if it is not the single top-level container for the whole project
 
 
 
-> ⚠️ **Blueflame content guard — mandatory**
+> ⚠️ **Blueflame content guard — two-tier behaviour**
 > `searchDocuments` is the only permitted source of document content.
-> - If `searchDocuments` returns an **activation link** instead of results, **stop immediately**.
-> - Do **not** attempt to answer content-level questions using Claude's training knowledge, general M&A knowledge, or inference from file names.
-> - Tell the user: *"This check requires Blueflame to be enabled on this project. Please activate it via the link provided, then re-run."*
-> - All findings, risk flags, gap identifications, Q&A answers, and quality issues **must** be sourced exclusively from tool results.
+> - Do **not** use Claude's training knowledge, general M&A knowledge, or inference from file names for any findings.
+> - **Steps 2–5 structural checks** use `listFolderContents` only — always free. Complete all structural work first.
+> - **Content checks** (PII, redaction, risk signals) require `searchDocuments`. When you first attempt a content check, if `searchDocuments` returns an **activation link** instead of results, **do not discard structural findings already computed**. Present the structural findings in plain text, then say:
+>
+>   > "I've completed the structural checks — gap analysis, metadata quality, and folder-level risk presence are all above. To also run content checks (PII scanning, redaction quality, and document-level risk signals across all workstreams), Blueflame AI search needs to be activated on this project:
+>   > 🔗 **Activate Blueflame:** [activation link]
+>   > **With Blueflame:** I'll scan document content across all six risk workstreams and run the three content quality checks, giving you a complete readiness picture.
+>   > Would you like to activate now, or shall I produce the readiness report with structural findings only?"
+>
+> **Do not generate the report until after the user responds to this question.**
 
 > **`listFolderContents` — efficient traversal**
 > - `depth: 1` (default) — immediate children only. Use for targeted lookups.
@@ -120,21 +132,21 @@ Using the folder map from Step 2, compare against the expected structure for thi
 
 For each document in the fileroom, assess quality based on available metadata (file name, file type, size, upload date).
 
-**Metadata-only flags (always available, no Sidecar needed):**
+**Metadata-only flags (always available, no Blueflame needed):**
 - **Zero-byte or near-zero-byte files** — size of 0 KB or under 5 KB for a supposedly substantive document (e.g. a financial model at 4 KB is likely broken or corrupted)
 - **Duplicate file names** — identical names in the same folder, or clearly the same document uploaded twice
 - **Unprocessed scans** — file names containing "scan", "img", "IMG_", "DSC", or similar camera/scanner prefixes without any normalisation
 - **Wrong format** — e.g. a `.jpg` or `.bmp` in a Financials folder (images where PDFs or spreadsheets are expected)
 - **Stale documents** — upload date more than 12 months before today's date in an "active" section like Management Accounts or Board Minutes
 
-**Content-level flags (requires Sidecar / Blueflame Search):**
-If the project has Sidecar enabled, use `searchDocuments` to check for:
+**Content-level flags (requires Blueflame):**
+If Blueflame is active, use `searchDocuments` to check for:
 - **Password-protected files** — search for "enter password" or "this document is protected"
 - **Redaction failures** — search for names, NI numbers, dates of birth, bank account numbers, or other PII that should have been removed
 - **Blank documents** — files with no extractable text content
 - **Incorrect documents** — a file whose content clearly doesn't match its folder location (e.g. a holiday rota in the Material Contracts folder)
 
-Always call `searchDocuments` — if not yet activated it returns an activation link and content-level checks would materially improve the audit, note this in the report under a "Sidecar Recommended" callout.
+If Blueflame is not active, skip these checks and note them as "Not run — requires Blueflame" in the report.
 
 **Severity ratings for quality issues:**
 - 🔴 **Blocker** — password-protected files, confirmed PII/redaction failure, zero-byte documents in critical sections
@@ -145,7 +157,7 @@ Always call `searchDocuments` — if not yet activated it returns an activation 
 
 ## Step 5 — Risk Review
 
-Scan the document set for signals that would raise concern for a buyer or their advisors. Where Sidecar is available, use `searchDocuments` for each risk category below. Where it is not available, assess risk from folder presence/absence and document counts alone, and note the limitation.
+Scan the document set for signals that would raise concern for a buyer or their advisors. Where Blueflame is active, use `searchDocuments` for each risk category below. Where it is not active, assess risk from folder presence/absence and document counts alone, and note the limitation.
 
 **Risk categories to assess:**
 
@@ -227,7 +239,7 @@ Produce a single, structured report. Format it exactly as follows:
 - [File name / folder] — [issue]
 - ...
 
-> ℹ️ **Search not yet activated** — content-level checks were run via `searchDocuments`. If AI search is not yet activated, the tool returns an activation link — share it with the user. *(Include only always call `searchDocuments` — if not yet activated it returns an activation link.)*
+> ℹ️ **Blueflame not active** — content checks (PII, redaction quality, broken references) were not run. Include this note only if Blueflame was not available.
 
 ---
 
@@ -243,7 +255,7 @@ Produce a single, structured report. Format it exactly as follows:
 - [Workstream] — [what was found or inferred]
 - ...
 
-> ℹ️ **Search not yet activated** — risk signals were assessed from folder structure only, not document content. Call `searchDocuments` for content-level risk signals — if not yet activated it returns an activation link to share with the user. *(Include only always call `searchDocuments` — if not yet activated it returns an activation link.)*
+> ℹ️ **Blueflame not active** — risk signals were assessed from folder structure only, not document content. Include this note only if Blueflame was not available.
 
 ---
 
@@ -259,12 +271,12 @@ List the top 5 things the deal team must do, in priority order:
 
 ---
 
-#### Sidecar Recommended
-*(Include this section only always call `searchDocuments` — if not yet activated it returns an activation link and content checks were skipped.)*
+#### Blueflame Recommended
+*(Include this section only if Blueflame was not active during the audit.)*
 
-Several checks in this audit — including password-protected file detection, PII/redaction review, and content-level risk signals — require Sidecar to be enabled on this project. Without Sidecar, these checks were skipped.
+Several checks in this audit — including password-protected file detection, PII/redaction review, and content-level risk signals — require Blueflame AI search to be activated on this project. Without it, these checks were skipped and the readiness picture above is structural only.
 
-To enable Sidecar, contact your Datasite account manager or activate it via the project settings.
+🔗 To activate Blueflame, use the activation link returned by `searchDocuments`.
 
 ---
 
@@ -281,3 +293,23 @@ After delivering the report, offer:
 - **Do not run individual audit skills separately** if this orchestrator is already running. All three workstreams are handled here.
 - **If a section is empty and unfixable within the session** (e.g. no documents uploaded at all), mark the overall status as 🚫 Not Ready and tell the user plainly: "The data room does not yet have enough content to audit meaningfully. Please upload the core documents and run this check again."
 - **Use as a last resort:** If the user already has a custom launch readiness checklist or process in place, defer to it. Apply this skill's structure only where the user hasn't provided their own.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+

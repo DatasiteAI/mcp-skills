@@ -10,6 +10,14 @@ description: >
   or any request to systematically work through a list of buyer questions using
   data room content as the source. Use this skill proactively whenever a buyer
   has submitted questions and the deal team wants AI-assisted drafting.
+  Do not use for individual one-off questions outside a structured Q&A process.
+  Do not draft answers from general knowledge — all responses must come from the data room.
+metadata:
+  author: Blueflame AI
+  version: 1.0.0
+  mcp-server: datasite
+  category: deal-management
+  tags: [datasite, vdr, m&a, q-and-a, due-diligence, blueflame]
 ---
 
 # Bulk Q&A Answers
@@ -70,7 +78,7 @@ If any column mappings are unclear, ask the user to confirm before proceeding.
 
 ## Step 2 — Understand the deal context
 
-Call `getProjectOverview` to confirm the project name, sector, and fileroom structure. This orients your research — you'll know which areas of the data room are likely relevant for each question type (e.g. financial questions → Finance filerooms, IP questions → Technology/IP section).
+Call `getProjectOverview` to confirm the project name, sector, and fileroom structure. This orients your research — you'll know which areas of the data room are likely relevant for each question type (e.g. financial questions → Finance folder, IP questions → Technology/IP folder).
 
 ---
 
@@ -174,100 +182,18 @@ Save as `[ProjectName]_QA_Tracker_[Date].xlsx` in the outputs folder.
 
 ## Step 6 — Produce the React Q&A management dashboard (only if requested)
 
-Generate a self-contained React component as an artifact. Populate it with the actual questions, answers, statuses, buyer groups, source references, and citations you've generated. The dashboard is for active deal management — it should feel live and usable, not like a static report.
+Read `references/dashboard-spec.md` for the full React component specification before building.
 
-Use **Source Sans 3** (via Google Fonts import) and the following colour palette:
-- Navy: `#1a2332`
-- Gold accent: `#d4a017`
-- Blue: `#3b82f6`
-- Green: `#22c55e`
-- Red: `#ef4444`
-- Amber: `#d97706`
-- Card border: `1px solid #e2e6ed`, border-radius `12px`, subtle box-shadow
+The dashboard is a self-contained React component populated with the actual questions, answers, statuses, buyer groups, source references, and citations generated during the Q&A drafting process. It is for active deal management — it should feel live and usable, not like a static report.
 
-All state is managed via `useState` — no backend required.
+Key sections to implement (details in the reference file):
+1. **Summary KPI Bar** — four stat cards (Total, Open, Awaiting Review, Submitted)
+2. **Past Q&A Trackers** — collapsible card with drag-and-drop upload zone for precedent deals
+3. **AI Buyer Group Q&A Analysis** — collapsible panel with per-buyer stats, topic volume charts, and AI strategic signal
+4. **Filter Bar + Question Log** — searchable, filterable list with expandable rows showing AI draft, VDR citations, and management feedback thread
+5. **Dashboard Modal** — full KPI and analytics view with time-savings metrics
 
-### Section 1 — Summary KPI Bar
-
-Four stat cards in a horizontal row, each with a large bold number, label, and sub-label:
-- **Total Questions** (all buyers) — blue
-- **Open** (awaiting response) — red
-- **Awaiting Review** (AI draft ready, not yet submitted) — amber
-- **Submitted** (sent to buyers) — green
-
-Populate with real counts from the Q&A data.
-
-### Section 2 — Past Q&A Trackers & Precedent Deals (collapsible)
-
-A collapsible card with a folder icon, title, and count of uploaded files. When expanded:
-- Drag-and-drop upload zone accepting `.xlsx`, `.csv`, `.pdf` — labelled "Drop Datasite Q&A exports, Excel trackers, or past deal logs here"
-- List of uploaded trackers, each showing: green "✓ Indexed" badge, filename, number of Q&A records, date, and a remove (×) button
-- Purpose label: these inform AI tone and response style for new answers
-
-### Section 3 — AI Buyer Group Q&A Analysis (collapsible)
-
-Collapsible card with sparkle icon and title "AI Buyer Group Q&A Analysis". When expanded:
-
-**Buyer Group selector tabs** — pill buttons for each buyer group (use actual buyer names from the questions). Active buyer highlighted in gold. A "Re-run / Run Analysis" button with sparkle icon on the right. Clicking it shows a 2-second loading animation cycling through: "Mapping questions to topic taxonomy…", "Identifying coverage gaps…", "Cross-referencing with VDR access patterns…", "Generating strategic signals…"
-
-**Per-buyer analysis panel** (switches on tab click) containing:
-
-1. **5 stat cards**: Questions Asked, Answered, Awaiting Review, Still Open, Avg Response Time (days)
-2. **Ranking badges**: activity rank vs. other buyers (#1/#2/#3), activity level (Most active / Least active), interest level (High / Very High / Moderate), VDR time in hours
-3. **Two-column grid**:
-   - Left: "Topics by Volume" — horizontal bar chart showing question categories with counts and proportional fill bars
-   - Right: "Areas of Focus" — 🔥 Hot areas (most questions) and ❄ Cold areas (no questions yet)
-4. **AI Strategic Signal** — gold-accented text block with sparkle icon, 2–3 sentence interpretation of the buyer's diligence behaviour, what it signals about their interest level, and a recommended action for the deal team
-
-### Section 4 — Filter Bar + Question Log
-
-**Filter bar** (horizontal row inside a card):
-- Search input: "Search questions or buyers…"
-- Dropdowns: Status (All / Complete / Partial / Open), Priority (All / High / Medium / Low), Buyer (All / [buyer names]), Assignee (all unique assignees)
-- A "Dashboard" button (gold accent, bar chart icon) that opens the Dashboard Modal
-
-**Question list** — expandable rows, one per question. Each collapsed row shows:
-- Chevron (▶ rotates to ▼ when open)
-- Question ID (Q001, Q002…) in blue
-- Priority dot (red = high, amber = medium, green = low) — Financial/Tax/Legal = High, Commercial/HR = Medium, Other = Low
-- Question text (truncated to ~80 chars)
-- Buyer name badge
-- Status chip with coloured dot: Complete (green), Partial (amber), Open (red/grey)
-- Date
-
-**Expanded row** shows a detail panel with:
-
-1. **Previously answered banner** (if applicable) — amber banner: "🔁 Previously answered for [Buyer] ([QID] · [Date]) — [summary]"
-2. **AI Suggested Response**
-   - Header with sparkle icon, "AI Suggested Response" label, green "Draft ready" badge if draft exists
-   - Buttons: "Generate AI Response" (no draft) or "Edit draft" / "Done editing" (if draft exists)
-   - Response in a white box; editing switches to resizable textarea with gold border
-3. **VDR Sources & Citations**
-   - List of source buttons: document name, folder path, page number
-   - Clicking opens a modal showing the document excerpt with the relevant sentence highlighted in yellow
-   - Each source shows "View excerpt →"
-   - Full citation text shown below each source in a smaller grey font
-4. **Action buttons row**:
-   - "↗ Share with Management" — turns green with ✓ when clicked
-   - "↗ Share with Buyer" — gold accent, disabled until draft exists; turns "✓ Sent to Buyer" on click and updates status to Submitted
-   - Right-aligned: "Assigned: [name]" label
-5. **Management Feedback** (shown after sharing with management)
-   - Thread of feedback comments with author name and timestamp
-   - Input field + "Send" button; comments render with author name bold
-
-### Dashboard Modal (triggered by "Dashboard" button)
-
-Full-screen modal with dark navy header:
-- Title: "Q&A Dashboard — [Project Name]", generated date, "↗ Share with Management" button
-
-Modal body:
-1. **KPI row** — Total Questions, Avg AI Response Time ("14 min vs 2.4 days manual"), AI Hours Saved, Submitted to Buyers
-2. **Questions by Buyer** — for each buyer: total count, tri-colour progress bar (green = answered, amber = review, red = open)
-3. **Two-column grid**:
-   - Left: "Open Questions by Age" — >7 days (red), 3–7 days (amber), <3 days (green) with proportional bars
-   - Right: "Open by Assigned Manager" — managers with red "X open" and amber "X review" badges
-4. **AI Value — Time Savings** — gold card: avg manual time (3.2 hrs), avg AI-assisted time (18 min), total hours saved
-5. **Submission Breakdown** — 3 cards: submitted after AI approval, submitted after management edit, submitted with no feedback needed
+Use navy `#1a2332` / gold `#d4a017` colour palette with Source Sans 3 font. All state via `useState` — no backend required.
 
 ---
 
@@ -298,3 +224,30 @@ If there are Partial answers, offer:
 **Flag patterns.** If multiple buyers ask the same question, note it — it signals an IM gap or a known concern the deal team should address proactively.
 
 **Respect sensitivity.** Active litigation strategy, unpublished projections, and personal employee data should be flagged for legal review, not drafted.
+
+## Performance Notes
+
+- **Quality over speed.** A wrong answer is worse than no answer — buyers will scrutinise every response.
+- Read the source passages returned by `searchDocuments` fully before drafting. Do not skim.
+- Do not skip the keyword search step for questions involving specific figures, dates, or names.
+- Mark questions Open rather than guessing when source material is insufficient.
+
+---
+
+## Common Issues
+
+**`getProjectOverview` fails or returns the wrong project**
+Check that the Datasite MCP connector is connected (Settings → Extensions → Datasite should show "Connected"). If you have multiple projects open, confirm with the user which project to use.
+
+**`listFolderContents` returns no results**
+The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
+
+**`searchDocuments` returns an activation link instead of results**
+Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+
+**MCP disconnects mid-workflow**
+Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
+
+**`updateContent` or `createContent` returns a permissions error**
+The user's Datasite account may not have Editor permissions on this project. Ask them to check their role in Datasite project settings.
+
