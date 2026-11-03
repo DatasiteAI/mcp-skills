@@ -14,7 +14,7 @@ description: >
   document-quality-check, or risk-analysis-audit for that.
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, index, folder-structure, setup]
@@ -36,18 +36,18 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
 | Propose and create folder index | ✅ | — |
 | Read project context and sector | ✅ | — |
 | Push structure to Datasite | ✅ | — |
 | Invite team members | ✅ | — |
 
-**This skill is fully free.** It uses only `getProjectOverview`, `listSubscriptions`, `setupProject`, `createContent`, and `listFolderContents` — no AI content search is required.
+**This skill uses MCP core operations only.** It uses only `getProjectOverview`, `listSubscriptions`, `setupProject`, `createContent`, and `listFolderContents` — no AI document search is required. Creating folders requires the user's Datasite permissions and explicit confirmation.
 
 
 
-> ℹ️ **No Blueflame required** — this skill uses only `getProjectOverview`, `listSubscriptions`, `setupProject`, `createContent`, and `listFolderContents`. It never calls `searchDocuments`. All functionality is available without Blueflame activation.
+> ℹ️ **No AI document search required** — this skill uses only `getProjectOverview`, `listSubscriptions`, `setupProject`, `createContent`, and `listFolderContents`. It never calls `searchDocuments`. Creating folders still requires the user's Datasite permissions and confirmation.
 
 > **`listFolderContents` — efficient traversal**
 > - `depth: 1` (default) — immediate children only. Use for targeted lookups.
@@ -246,7 +246,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.

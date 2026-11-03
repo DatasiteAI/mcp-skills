@@ -14,7 +14,7 @@ description: >
   or for drafting Q&A responses (use bulk-qa-answers).
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, gap-analysis, completeness, blueflame]
@@ -38,28 +38,28 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
 | Structural gap analysis (missing/empty/sparse folders) | ✅ | — |
 | Year completeness checks from filenames | ✅ | — |
 | Contract cross-referencing (customer, employee, supplier lists) | — | ✅ |
 | IRL matching (if provided) | — | ✅ |
 
-**Without Blueflame:** Produces a structural gap report — missing sections, empty folders, sparse time-series coverage — based on folder structure and filenames. Contract cross-referencing and IRL matching are skipped.
+**Without AI document search access:** Identifies absent, empty or sparse folders and possible year gaps from the VDR structure and filenames. This is a structural review, not proof that all required documents are present. Contract cross-referencing and IRL matching are skipped.
 
-**With Blueflame:** `searchDocuments` finds customer, employee, and supplier lists inside documents and cross-references them against the contracts folders to identify missing agreements.
+**With AI document search access:** Checking customer, employee or supplier lists against agreements requires document search through `searchDocuments`. Potential gaps are findings to verify, not definitive proof that a contract is missing.
 
 
 
-> ⚠️ **Blueflame content guard — two-tier behaviour**
+> ⚠️ **AI document search guard — two-tier behaviour**
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** use Claude's training knowledge, general M&A knowledge, or inference from file names for any findings.
-> - **Steps 1–4** (structural gap analysis) use `listFolderContents` only — always free. Complete these regardless of Blueflame status.
+> - **Steps 1–4** (structural gap analysis) use `listFolderContents` only — no AI document search required. Complete these regardless of AI document search access.
 > - **Step 5** (contract cross-referencing) requires `searchDocuments`. When you reach it, attempt one call. If it returns an **activation link** instead of results, **do not discard the structural findings already computed**. Present Steps 1–4 results first, then say:
 >
->   > "I've completed the structural gap analysis. Summary: [list top findings per section in plain text — e.g. 'Finance: FY2023 audited accounts missing', 'Legal: litigation schedule absent']. To also cross-reference your customer, employee, and vendor lists against contracts, Blueflame AI search needs to be activated:
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I'll read your lists, extract each name, and check whether a signed contract exists — identifying missing or partial coverage.
+>   > "I've completed the structural gap analysis. Summary: [list top findings per section in plain text — e.g. 'Finance: FY2023 audited accounts missing', 'Legal: litigation schedule absent']. To also cross-reference your customer, employee, and vendor lists against contracts, AI document search access needs to be enabled for this project:
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I'll read your lists, extract each name, and flag potential missing or partial contract coverage for your team to verify.
 >   > Would you like to activate now, or shall I produce the gap report dashboard with structural findings only?"
 >
 > **Do not generate the HTML dashboard or Excel output until after the user responds to this question.**
@@ -84,9 +84,9 @@ Note the `transactionValue` and `useCase` — these determine:
 
 ## Step 2 — Check for an Information Request List (IRL)
 
-Ask the user (briefly, in one line): "Do you have an Information Request List you'd like me to cross-reference? If so, share it and I'll flag what's been delivered vs. outstanding."
+Ask the user (briefly, in one line): "Do you have an Information Request List you'd like me to cross-reference? If so, share it and I'll flag which items look delivered vs. outstanding, for your team to verify."
 
-If they provide one, read it and extract each requested item. Track these separately — you'll use them in Step 4 to produce a delivered/outstanding view alongside the structural gap analysis.
+If they provide one, read it and extract each requested item. Track these separately — you'll use them in Step 6 to produce a likely-delivered/outstanding view alongside the structural gap analysis.
 
 If they don't have one, proceed with the structural analysis only.
 
@@ -171,7 +171,7 @@ If the data room contains any of the following lists, cross-reference them again
 3. Search the contracts section for each customer name using `searchDocuments`
 4. Flag any customer where no corresponding contract is found
 
-Report as: "Contract missing for: [Customer Name]" — sorted by likely revenue importance if discernible from the list.
+Report as: "Possible missing contract — verify: [Customer Name]" — sorted by likely revenue importance if discernible from the list.
 
 ### Employee list → Employment agreements
 
@@ -182,7 +182,7 @@ Report as: "Contract missing for: [Customer Name]" — sorted by likely revenue 
 
 Focus on senior staff — it is not always expected that every employee has an individual agreement (e.g. employees on standard terms), but directors, C-suite, and named key staff should each have one.
 
-Report as: "Employment agreement not found for: [Name], [Title]"
+Report as: "Possible missing employment agreement — verify: [Name], [Title]"
 
 ### Supplier / vendor list → Supplier agreements
 
@@ -191,7 +191,7 @@ Report as: "Employment agreement not found for: [Name], [Title]"
 3. Search the contracts/supplier agreements folder for each name
 4. Flag material suppliers where no agreement is found
 
-Report as: "Supplier agreement missing for: [Supplier Name]"
+Report as: "Possible missing supplier agreement — verify: [Supplier Name]"
 
 ---
 
@@ -200,11 +200,13 @@ Report as: "Supplier agreement missing for: [Supplier Name]"
 If the user provided an Information Request List:
 
 For each IRL item, determine its status:
-- **Delivered** — a document matching the request exists in the data room (use `searchDocuments` to find it); include the VDR path
-- **Partially delivered** — some but not all of what was requested is present (e.g. 2 of 3 requested years)
+- **Likely delivered — verify** — `searchDocuments` found a document that appears to match the request; include the VDR path
+- **Possibly partial — verify** — some but not all of what was requested appears to be present (e.g. 2 of 3 requested years)
 - **Outstanding** — nothing matching the request found in the data room
 
-Present this as a separate table: IRL Item | Status | VDR Location (if delivered) | Gap Description (if outstanding)
+Present this as a separate table: IRL Item | Status | VDR Location (if likely delivered) | Gap Description (if outstanding)
+
+These statuses are search matches for your team to verify, not confirmation that a request is satisfied. For item-by-item tracking with content verification and citations, use the irl-tracker skill.
 
 ---
 
@@ -240,9 +242,11 @@ For example: "Board Minutes — only 1 document found; expect 3 years of minutes
 Before generating any output, ask:
 
 > "I've completed the gap analysis. What would you like me to produce?
-> - **HTML dashboard** — interactive gap report with section cards, financial year grid, and Excel export button (uses additional credits to render)
-> - **Plain text summary** — gap findings listed in this conversation, no additional cost
-> - **Both**"
+> - **HTML dashboard** — interactive gap report with section cards, financial year grid, and Excel export button
+> - **Plain text summary** — gap findings listed in this conversation
+> - **Both**
+>
+> AI document search requires the appropriate Datasite entitlement. Usage charges may apply based on the customer's Datasite plan and the AI application they are using."
 
 Only generate the HTML dashboard and/or Excel tracker if the user explicitly requests them. If they choose plain text, go directly to Step 9.
 
@@ -283,8 +287,8 @@ The dashboard itself:
 - Supplier agreements: X of Y found (progress bar)
 - Below each bar: list of names where no contract was found
 
-**IRL tracker (if IRL was provided):**
-- Delivered / Partial / Outstanding counts as stat cards
+**IRL cross-reference (if IRL was provided):**
+- Likely delivered / Possibly partial / Outstanding counts as stat cards, labelled as unverified search matches
 - Table: IRL Item | Status chip | VDR Location or Gap Note
 
 **Detailed gap list:**
@@ -335,7 +339,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.

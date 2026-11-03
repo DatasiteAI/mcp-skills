@@ -14,7 +14,7 @@ description: >
   Do not draft answers from general knowledge — all responses must come from the data room.
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, q-and-a, due-diligence, blueflame]
@@ -38,28 +38,31 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
-| Q&A status overview and health metrics | ✅ | — |
+| Q&A counts, categories and current status (subject to the user's Q&A permissions) | ✅ | — |
 | Draft answers to buyer questions from document content | — | ✅ |
 | Source citations with document name, path, and page number | — | ✅ |
-| Excel tracker and dashboard | ✅ | — |
+| Excel tracker and dashboard built from Q&A metadata | ✅ | — |
+| Tracker and dashboard populated with grounded draft answers | — | ✅ |
 
-**Without Blueflame:** The skill can retrieve the Q&A status overview and display question counts and categories. It cannot draft answers — all questions will be marked Open. The core value of this skill requires Blueflame.
+**Without AI document search access:** Shows permitted Q&A summary information such as counts, categories and current status. Access depends on the user's Q&A permissions; no document-grounded answer drafting is included.
 
-**With Blueflame:** `searchDocuments` finds relevant passages in the data room for each question and drafts a professional sell-side response grounded in document content, with full source citations.
+**With AI document search access:** Drafts buyer Q&A responses from permissioned document search (`searchDocuments`), with source references. Human review and workflow permissions remain required — drafts are never automatically submitted or published to Datasite Q&A.
+
+A tracker or dashboard can be generated from accessible Q&A metadata without AI document search. Populating it with grounded draft answers requires AI document search access. AI document search requires the appropriate Datasite entitlement. Usage charges may apply based on the customer's Datasite plan and the AI application they are using. It is not a native Datasite dashboard and does not import or submit anything into Datasite Q&A.
 
 
 
-> ⚠️ **Blueflame content guard — mandatory**
+> ⚠️ **AI document search guard — mandatory**
 > `searchDocuments` is the only permitted source of document content.
 > - **Never draft Q&A answers from Claude's general knowledge.** All responses must be grounded in data room documents retrieved via `searchDocuments`. A fabricated answer is worse than no answer.
 > - If `searchDocuments` returns an **activation link** instead of results, **stop immediately** and tell the user:
 >
->   > "To draft answers grounded in your data room, Blueflame AI search needs to be activated on this project:
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I'll read the relevant documents for each question and draft a professional sell-side response citing the document name and page — so every answer is defensible and traceable back to source. Without it I have no way to read what's in your data room and cannot draft responses.
->   > Please activate Blueflame and then re-run."
+>   > "To draft answers grounded in your data room, AI document search access needs to be enabled for this project:
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I'll read the relevant documents for each question and draft a sell-side response citing the document name and page, so each draft is traceable back to source for your team's review. Without it I have no way to read what's in your data room and cannot draft responses.
+>   > Please enable AI document search for this project and then re-run."
 >
 > - Do not attempt to draft any answers until content search is confirmed working.
 > - All Q&A answers **must** be sourced exclusively from tool results.
@@ -112,7 +115,7 @@ With the passages and document context in hand, write a clear, factual response.
 
 ### 3e — Assign a status
 
-- **Complete** — question fully answered with clear source material
+- **Complete** — draft answer supported by VDR evidence with clear source citations. Complete describes the draft only; it does not mean the answer has been reviewed, approved, or submitted into Datasite Q&A
 - **Partial** — answer drafted but source material is incomplete or only partially responsive
 - **Open** — insufficient source material found; needs manual input from the deal team
 
@@ -151,9 +154,11 @@ Before generating the Excel tracker and dashboard, ask:
 
 > "I've drafted answers for all [N] questions. What would you like me to produce?
 > - **Excel tracker** — formatted spreadsheet with all questions, answers, statuses, and source citations
-> - **Q&A management dashboard** — interactive React dashboard for active deal management (uses additional credits)
+> - **Q&A management dashboard** — interactive React dashboard for active deal management
 > - **Both**
-> - **Neither** — just show me the answers in this conversation"
+> - **Neither** — just show me the answers in this conversation
+>
+> AI document search requires the appropriate Datasite entitlement. Usage charges may apply based on the customer's Datasite plan and the AI application they are using."
 
 Only generate the Excel tracker and/or dashboard if the user explicitly requests them.
 
@@ -187,11 +192,10 @@ Read `references/dashboard-spec.md` for the full React component specification b
 The dashboard is a self-contained React component populated with the actual questions, answers, statuses, buyer groups, source references, and citations generated during the Q&A drafting process. It is for active deal management — it should feel live and usable, not like a static report.
 
 Key sections to implement (details in the reference file):
-1. **Summary KPI Bar** — four stat cards (Total, Open, Awaiting Review, Submitted)
-2. **Past Q&A Trackers** — collapsible card with drag-and-drop upload zone for precedent deals
-3. **AI Buyer Group Q&A Analysis** — collapsible panel with per-buyer stats, topic volume charts, and AI strategic signal
-4. **Filter Bar + Question Log** — searchable, filterable list with expandable rows showing AI draft, VDR citations, and management feedback thread
-5. **Dashboard Modal** — full KPI and analytics view with time-savings metrics
+1. **Summary KPI Bar** — four stat cards (Total, Complete, Partial, Open), using the statuses defined in Step 3e
+2. **AI Buyer Group Q&A Analysis** — collapsible panel with per-buyer stats, topic volume charts, and AI strategic signal
+3. **Filter Bar + Question Log** — searchable, filterable list with expandable rows showing AI draft, VDR citations, and management feedback thread
+4. **Dashboard Modal** — full KPI and analytics view with time-savings metrics
 
 Use navy `#1a2332` / gold `#d4a017` colour palette with Source Sans 3 font. All state via `useState` — no backend required.
 
@@ -204,7 +208,7 @@ Present both outputs:
 2. The React dashboard artifact rendered in the conversation
 
 Then say:
-> "I've drafted answers to [N] questions — [X] Complete, [Y] Partial, [Z] Open. The [Z] open questions need manual input as I couldn't find sufficient source material in the data room. Both the Excel tracker and the live dashboard are ready above."
+> "I've drafted answers to [N] questions — [X] Complete, [Y] Partial, [Z] Open. Complete means the draft is supported by VDR evidence; none have been submitted to Datasite Q&A — they need your team's review first. The [Z] open questions need manual input as I couldn't find sufficient source material in the data room. Both the Excel tracker and the live dashboard are ready above."
 
 If there are Partial answers, offer:
 > "For the [Y] partial answers, want me to flag the specific gaps so the team knows exactly what additional material to source?"
@@ -225,6 +229,8 @@ If there are Partial answers, offer:
 
 **Respect sensitivity.** Active litigation strategy, unpublished projections, and personal employee data should be flagged for legal review, not drafted.
 
+**Draft only — never submit.** This skill drafts responses for human review. Do not submit or publish answers to Datasite Q&A as part of this skill; submission is a separate, human-reviewed step.
+
 ## Performance Notes
 
 - **Quality over speed.** A wrong answer is worse than no answer — buyers will scrutinise every response.
@@ -243,7 +249,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.

@@ -15,7 +15,7 @@ description: >
   skill orchestrates all three in one pass.
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, launch, readiness, orchestration]
@@ -23,7 +23,7 @@ metadata:
 
 # Launch Readiness Orchestrator
 
-You are running a pre-go-live readiness check on a Datasite data room. Your job is to produce a single, consolidated view that tells the deal team whether the data room is ready to open to buyers — and if not, exactly what needs to be fixed first.
+You are running a pre-go-live readiness check on a Datasite data room. Your job is to produce a single, consolidated view that helps the deal team judge whether the data room is ready to open to buyers — and if not, exactly what needs to be fixed first.
 
 This skill orchestrates three workstreams in sequence:
 1. **Gap Analysis** — is everything expected actually in the room?
@@ -46,30 +46,31 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
 | Gap analysis (structural — missing/empty/sparse sections) | ✅ | — |
-| Document quality — metadata checks (7 of 10 checks) | ✅ | — |
-| Document quality — content checks (PII, redaction, broken refs) | — | ✅ |
+| Document quality — metadata checks (file size, duplicates, scan-style names, formats, upload dates) | ✅ | — |
+| Document quality — content checks (password protection, PII/redaction, blank content, misfiled documents) | — | ✅ |
 | Risk review — structural presence check only | ✅ | — |
 | Risk review — content risk signals across all workstreams | — | ✅ |
-| Go / No-Go recommendation | ✅ | — |
+| Structural launch-readiness view (content checks marked NOT RUN) | ✅ | — |
+| Readiness view including content review flags | — | ✅ |
 
-**Without Blueflame:** Produces a meaningful readiness report covering structural gaps, metadata-based document quality issues, and a structural risk presence check. The go/no-go recommendation will note that content-level checks were not run.
+**Without AI document search access:** Creates a structural launch-readiness view from folders, filenames and available metadata. PII, redaction, document-risk and other content checks are clearly marked **NOT RUN**. This is not a full go-live certification, and the report never shows the room as ✅ Ready.
 
-**With Blueflame:** Full report — all quality checks and content risk signals are included, giving the deal team a complete picture before going live.
+**With AI document search access:** Adds document-grounded quality and risk checks through document search (`searchDocuments`). Results are review flags requiring human validation, not a guarantee of content completeness or readiness.
 
 
 
-> ⚠️ **Blueflame content guard — two-tier behaviour**
+> ⚠️ **AI document search guard — two-tier behaviour**
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** use Claude's training knowledge, general M&A knowledge, or inference from file names for any findings.
-> - **Steps 2–5 structural checks** use `listFolderContents` only — always free. Complete all structural work first.
+> - **Steps 2–5 structural checks** use `listFolderContents` only — no AI document search required. Complete all structural work first.
 > - **Content checks** (PII, redaction, risk signals) require `searchDocuments`. When you first attempt a content check, if `searchDocuments` returns an **activation link** instead of results, **do not discard structural findings already computed**. Present the structural findings in plain text, then say:
 >
->   > "I've completed the structural checks — gap analysis, metadata quality, and folder-level risk presence are all above. To also run content checks (PII scanning, redaction quality, and document-level risk signals across all workstreams), Blueflame AI search needs to be activated on this project:
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I'll scan document content across all six risk workstreams and run the three content quality checks, giving you a complete readiness picture.
+>   > "I've completed the structural checks — gap analysis, metadata quality, and folder-level risk presence are all above. To also run content checks (PII scanning, redaction quality, and document-level risk signals across all workstreams), AI document search access needs to be enabled for this project:
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I'll search document content across all risk workstreams and run the content quality checks, adding content-level review flags to the readiness report.
 >   > Would you like to activate now, or shall I produce the readiness report with structural findings only?"
 >
 > **Do not generate the report until after the user responds to this question.**
@@ -132,24 +133,24 @@ Using the folder map from Step 2, compare against the expected structure for thi
 
 For each document in the fileroom, assess quality based on available metadata (file name, file type, size, upload date).
 
-**Metadata-only flags (always available, no Blueflame needed):**
+**Metadata-only flags (MCP core operations — no AI document search required):**
 - **Zero-byte or near-zero-byte files** — size of 0 KB or under 5 KB for a supposedly substantive document (e.g. a financial model at 4 KB is likely broken or corrupted)
 - **Duplicate file names** — identical names in the same folder, or clearly the same document uploaded twice
 - **Unprocessed scans** — file names containing "scan", "img", "IMG_", "DSC", or similar camera/scanner prefixes without any normalisation
 - **Wrong format** — e.g. a `.jpg` or `.bmp` in a Financials folder (images where PDFs or spreadsheets are expected)
 - **Stale documents** — upload date more than 12 months before today's date in an "active" section like Management Accounts or Board Minutes
 
-**Content-level flags (requires Blueflame):**
-If Blueflame is active, use `searchDocuments` to check for:
+**Content-level flags (requires AI document search access):**
+If AI document search access is available, use `searchDocuments` to check for:
 - **Password-protected files** — search for "enter password" or "this document is protected"
 - **Redaction failures** — search for names, NI numbers, dates of birth, bank account numbers, or other PII that should have been removed
 - **Blank documents** — files with no extractable text content
 - **Incorrect documents** — a file whose content clearly doesn't match its folder location (e.g. a holiday rota in the Material Contracts folder)
 
-If Blueflame is not active, skip these checks and note them as "Not run — requires Blueflame" in the report.
+If AI document search access is not available, skip these checks and mark them as **NOT RUN — requires AI document search access** in the report.
 
 **Severity ratings for quality issues:**
-- 🔴 **Blocker** — password-protected files, confirmed PII/redaction failure, zero-byte documents in critical sections
+- 🔴 **Blocker** — password-protected files, PII/redaction issue flagged by content search (requires human validation), zero-byte documents in critical sections
 - 🟡 **Advisory** — duplicate files, wrong formats, stale documents
 - 🟢 **Minor** — unprocessed scan names, cosmetic naming issues
 
@@ -157,7 +158,7 @@ If Blueflame is not active, skip these checks and note them as "Not run — requ
 
 ## Step 5 — Risk Review
 
-Scan the document set for signals that would raise concern for a buyer or their advisors. Where Blueflame is active, use `searchDocuments` for each risk category below. Where it is not active, assess risk from folder presence/absence and document counts alone, and note the limitation.
+Scan the document set for signals that would raise concern for a buyer or their advisors. Where AI document search access is available, use `searchDocuments` for each risk category below. Where it is not, assess risk from folder presence/absence and document counts alone, and note the limitation.
 
 **Risk categories to assess:**
 
@@ -198,12 +199,14 @@ Produce a single, structured report. Format it exactly as follows:
 
 | | |
 |---|---|
-| **Go-live recommendation** | ✅ Ready / ⚠️ Conditional / 🚫 Not Ready |
+| **Go-live recommendation** | ✅ Ready / ⚠️ Conditional / 🚫 Not Ready / 🟡 Structural checks passed — content review not performed |
 | **Blockers to resolve** | [N] |
 | **Advisory items** | [N] |
 | **Minor items** | [N] |
 
 *Conditional = ready once blockers are resolved. Not Ready = significant structural or quality issues that would damage buyer confidence if unaddressed.*
+
+**If content checks were not run** (no AI document search access), never show ✅ Ready. Where the structural checks would otherwise pass, show **🟡 Structural checks passed — content review not performed** instead; Conditional and Not Ready still apply when structural blockers are found. A metadata-only report must not imply the room is ready to go live. Even with content checks, the recommendation is a review aid requiring human validation, not a go-live certification.
 
 ---
 
@@ -239,7 +242,7 @@ Produce a single, structured report. Format it exactly as follows:
 - [File name / folder] — [issue]
 - ...
 
-> ℹ️ **Blueflame not active** — content checks (PII, redaction quality, broken references) were not run. Include this note only if Blueflame was not available.
+> ℹ️ **Content review NOT RUN** — content checks (password protection, PII/redaction, blank content, misfiled documents) were not run. Include this note only if AI document search access was not available.
 
 ---
 
@@ -255,7 +258,7 @@ Produce a single, structured report. Format it exactly as follows:
 - [Workstream] — [what was found or inferred]
 - ...
 
-> ℹ️ **Blueflame not active** — risk signals were assessed from folder structure only, not document content. Include this note only if Blueflame was not available.
+> ℹ️ **Content review NOT RUN** — risk signals were assessed from folder structure only, not document content. Include this note only if AI document search access was not available.
 
 ---
 
@@ -271,12 +274,12 @@ List the top 5 things the deal team must do, in priority order:
 
 ---
 
-#### Blueflame Recommended
-*(Include this section only if Blueflame was not active during the audit.)*
+#### Content Checks — NOT RUN
+*(Include this section only if AI document search access was not available during the audit.)*
 
-Several checks in this audit — including password-protected file detection, PII/redaction review, and content-level risk signals — require Blueflame AI search to be activated on this project. Without it, these checks were skipped and the readiness picture above is structural only.
+Several checks in this audit — including password-protected file detection, PII/redaction review, and content-level risk signals — require AI document search access on this project. They were not run, so the readiness view above reflects structural checks only and is not a go-live certification.
 
-🔗 To activate Blueflame, use the activation link returned by `searchDocuments`.
+🔗 To enable AI document search, use the activation link returned by `searchDocuments`.
 
 ---
 
@@ -305,7 +308,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
