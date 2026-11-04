@@ -13,7 +13,7 @@ description: >
   Do not use for overall data room structural gap analysis — use gap-analysis for that.
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, irl, due-diligence, tracking, blueflame]
@@ -37,28 +37,29 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
 | Build document inventory from VDR | ✅ | — |
+| Suggest tentative IRL matches from filenames and folder paths | ✅ | — |
 | Match IRL items to documents semantically | — | ✅ |
 | Assess whether document content actually addresses each request | — | ✅ |
 | Build HTML tracking dashboard | ✅ | — |
 
-**Without Blueflame:** The skill can build a document inventory and populate the dashboard structure, but cannot match IRL items to documents or assess content relevance. All items will show as Open. The core value of this skill requires Blueflame.
+**Without AI document search access:** Builds a VDR inventory and suggests tentative IRL matches from filenames and folder paths. No AI document search is needed for this first pass, but a filename match does not establish that a request is satisfied — these matches are labelled as unverified.
 
-**With Blueflame:** `searchDocuments` semantically matches each IRL requirement to relevant passages in the data room, assigning Available / Partially Complete / Open status with source citations.
+**With AI document search access:** Verifies whether a document addresses an IRL item through document search (`searchDocuments`), using retrieved passages and citations. Requests are never marked complete based on filenames alone.
 
 
 
-> ⚠️ **Blueflame content guard — two-tier behaviour**
+> ⚠️ **AI document search guard — two-tier behaviour**
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** use Claude's training knowledge, general M&A knowledge, or inference from file names for any findings.
-> - **Step 3a** (filename and folder matching) is always free. Complete it across all IRL items first.
+> - **Step 3a** (filename and folder matching) requires no AI document search. Complete it across all IRL items first.
 > - **Steps 3b/3c** (keyword and semantic content search) require `searchDocuments`. Before starting Step 3b, attempt one call. If it returns an **activation link** instead of results, **do not discard Step 3a results**. Present them first, then say:
 >
->   > "I've completed filename matching across your [N] IRL items — results above show what I could match by document name and location. To verify that those documents actually address each request (not just exist nearby), Blueflame AI search needs to be activated:
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I'll read inside each document to confirm it covers the right year, entity, or clause — so 'Available' means genuinely addressed, not just 'a file with a matching name exists'. Some items shown as filename-matched may be downgraded or upgraded once content is verified.
+>   > "I've completed filename matching across your [N] IRL items — results above show what I could match by document name and location. To verify that those documents actually address each request (not just exist nearby), AI document search access needs to be enabled for this project:
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I'll read inside each document to confirm it covers the right year, entity, or clause — so 'Available' means genuinely addressed, not just 'a file with a matching name exists'. Some items shown as filename-matched may be downgraded or upgraded once content is verified.
 >   > Would you like to activate now to complete the content verification?"
 >
 > - All content findings **must** be sourced exclusively from tool results.
@@ -98,19 +99,19 @@ This is your document inventory. You'll reference it throughout the matching pro
 
 For each IRL requirement, find the best matching document(s) in the VDR. Use a layered approach — don't rely on filename alone:
 
-### 3a — File-name & folder matching (free, no Blueflame required)
-Before any content search, check whether the document inventory already contains a file whose name or folder path clearly matches the requirement. This step costs zero Blueflame credits.
+### 3a — File-name & folder matching (MCP core operation — no AI document search required)
+Before any content search, check whether the document inventory already contains a file whose name or folder path clearly matches the requirement. This step does not use AI document search.
 
-- Exact or near-exact name match (e.g. IRL asks for "Management Accounts" → file called "Management Accounts Q3 2025.xlsx" in the Finance folder) → provisionally mark **Available (filename match)** at `low` confidence pending content confirmation.
-- Folder-level match (e.g. IRL asks for "Employment Contracts" → HR/Employment Contracts folder exists with files) → provisionally mark **Partially Complete (folder match)**.
+- Exact or near-exact name match (e.g. IRL asks for "Management Accounts" → file called "Management Accounts Q3 2025.xlsx" in the Finance folder) → provisionally mark **Possible match (filename only — unverified)** at `low` confidence pending content confirmation. Never mark an item Available or Complete from a filename alone.
+- Folder-level match (e.g. IRL asks for "Employment Contracts" → HR/Employment Contracts folder exists with files) → provisionally mark **Possible match (folder only — unverified)**.
 - No name or folder match → move to content search below.
 
-> If Blueflame is not available, stop here. Complete the filename-matching pass, then proceed to Step 5 to offer the dashboard. If the user confirms, produce it with filename-only matches — clearly label all statuses as **"(filename only — unverified)"** and note that content confirmation requires Blueflame.
+> If AI document search access is not available, stop here. Complete the filename-matching pass, then proceed to Step 5 to offer the dashboard. If the user confirms, produce it with filename-only matches — clearly label all statuses as **"(filename only — unverified)"** and note that content confirmation requires AI document search access.
 
-### 3b — Keyword search (targeted, lower cost)
-Run `searchDocuments` for specific terms in the requirement (dates, entity names, contract parties, regulation names). Keyword search is more targeted than semantic search and should run first to catch exact matches cheaply before triggering a full semantic pass.
+### 3b — Keyword search (targeted)
+Run `searchDocuments` for specific terms in the requirement (dates, entity names, contract parties, regulation names). Keyword search is more targeted than semantic search and should run first to catch exact matches before triggering a full semantic pass.
 
-### 3c — Semantic search (comprehensive, higher cost)
+### 3c — Semantic search (comprehensive)
 Run `searchDocuments` with the requirement text (or a distilled version of it) as the query, with `decompose: true` for complex multi-part requests. This returns text passages with document names and page numbers. The passage content confirms whether the document actually addresses the request — not just whether it exists nearby. Only run this step if 3a and 3b did not return a high-confidence match.
 
 ### 3d — Content analysis for scattered information
@@ -188,7 +189,7 @@ Produce a structured dataset with one row per IRL item:
 
 Before generating the dashboard, ask:
 
-> "I've completed the IRL mapping. Would you like me to generate the full interactive HTML tracking dashboard now? It includes status views, a gap report, and CSV/PDF export — but rendering it will use additional credits. Alternatively I can give you a plain text summary now."
+> "I've completed the IRL mapping. Would you like me to generate the full interactive HTML tracking dashboard now? It includes status views, a gap report, and CSV/PDF export. AI document search requires the appropriate Datasite entitlement. Usage charges may apply based on the customer's Datasite plan and the AI application they are using. Alternatively I can give you a plain text summary now."
 
 Only build the dashboard if the user confirms. If they decline, go to Step 6 and deliver a plain text summary.
 
@@ -341,7 +342,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.

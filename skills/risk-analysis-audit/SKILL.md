@@ -13,7 +13,7 @@ description: >
   or for identifying missing sections (use gap-analysis).
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, risk, audit, blueflame]
@@ -39,28 +39,28 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
 | Structural presence check (which sections exist or are missing) | ✅ | — |
 | Content risk signals (going concern, litigation, tax disputes, etc.) | — | ✅ |
 | Per-workstream risk findings with source citations | — | ✅ |
 
-**Without Blueflame:** The skill can confirm which risk workstream sections are present, sparse, or missing — but cannot find risk signals inside document text. The report will show structural observations only. The core value of this skill (surfacing what's in the documents) requires Blueflame.
+**Without AI document search access:** Reports whether finance, legal, HR and other risk-related folders are present, empty or sparse. This is a structural view only — it does not identify substantive deal risks.
 
-**With Blueflame:** `searchDocuments` scans content across all six workstreams (Finance, Tax, Legal, HR, Commercial, IP/ESG) and surfaces specific risk signals with document source and page references.
+**With AI document search access:** Identifies potential risk signals within accessible document content across six workstreams (Finance, Tax, Legal, HR, Commercial, IP/ESG) and cites supporting sources. Findings are leads for diligence review, not confirmed legal or financial conclusions.
 
 
 
-> ⚠️ **Blueflame content guard — two-tier behaviour**
+> ⚠️ **AI document search guard — two-tier behaviour**
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** use Claude's training knowledge, general M&A knowledge, or inference from file names for any findings.
-> - **Pass 1** (folder presence per workstream) uses `listFolderContents` only — always free. Complete Pass 1 across all workstreams first.
+> - **Pass 1** (folder presence per workstream) uses `listFolderContents` only — no AI document search required. Complete Pass 1 across all workstreams first.
 > - **Pass 2** (content search for risk signals) requires `searchDocuments`. Before starting Pass 2, attempt one call. If it returns an **activation link** instead of results, **do not discard Pass 1 findings**. Present them first, then say:
 >
->   > "I've completed the structural review. Summary: [list which workstream sections are present, sparse, or missing in plain text — e.g. 'Finance: 3-year accounts present', 'Legal: litigation folder empty']. To scan document content for actual risk signals, Blueflame AI search needs to be activated:
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I'll run targeted searches across Finance, Tax, Legal, HR, Commercial, and IP workstreams and surface specific flags with document source and page references — these are the signals that matter most to buyers in due diligence.
->   > Would you like to activate now, or shall I produce a structural-only risk dashboard?"
+>   > "I've completed the structural review. Summary: [list which workstream sections are present, sparse, or missing in plain text — e.g. 'Finance: 3-year accounts present', 'Legal: litigation folder empty']. To scan document content for actual risk signals, AI document search access needs to be enabled for this project:
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I'll run targeted searches across Finance, Tax, Legal, HR, Commercial, and IP workstreams and surface potential risk signals with document source and page references — leads for your team's diligence review, not confirmed conclusions.
+>   > Would you like to activate now, or shall I produce a structural-only section-coverage dashboard?"
 >
 > **Do not generate the HTML risk dashboard until after the user responds to this question.**
 > - All content findings **must** be sourced exclusively from tool results.
@@ -261,7 +261,7 @@ Flag any material discrepancy (>5% difference) as a **High** risk — buyers wil
 
 ## Step 3c — External news intelligence on top customers and vendors
 
-> This step uses web search, not `searchDocuments`. It is always free — no Blueflame credits required.
+> This step uses web search, not `searchDocuments`. It does not require AI document search access.
 
 Extract the names of the top 5–10 customers and top 5–10 vendors from the data room (use the customer/vendor lists found in Step 3b, or from commercial documents identified in Workstream 5). Then run a targeted web news search for each name.
 
@@ -301,7 +301,7 @@ If no material news is found for a name, record "No material news found" and con
 
 Before generating the dashboard, ask:
 
-> "I've completed the risk audit. Would you like me to generate the interactive HTML risk dashboard, or would a plain text risk summary in this conversation be enough? The dashboard uses additional credits to render — the plain text summary is free."
+> "I've completed the risk audit. Would you like me to generate the interactive HTML risk dashboard, or would a plain text risk summary in this conversation be enough? AI document search requires the appropriate Datasite entitlement. Usage charges may apply based on the customer's Datasite plan and the AI application they are using."
 
 Only build the dashboard if the user confirms. If they decline, go to Step 5 and deliver a plain text summary.
 
@@ -372,7 +372,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.

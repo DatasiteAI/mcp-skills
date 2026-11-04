@@ -7,13 +7,13 @@ description: >
   files", "check for blank documents", "PII check", "redaction review", "find
   corrupted files", "document audit", "quality check the data room", "are there
   any blank or broken files", "check for unredacted personal data", or any request
-  to verify that documents in the data room are complete, accessible, and safe to
-  share. Use this skill proactively before a data room goes live.
+  to flag documents in the data room that may be incomplete, inaccessible, or
+  unsafe to share. Use this skill proactively before a data room goes live.
   Do not use for renaming files (use smart-file-renaming) or for identifying
   missing sections (use gap-analysis).
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, document-quality, pii, redaction, blueflame]
@@ -21,7 +21,7 @@ metadata:
 
 # Document Quality Check
 
-You are helping a deal team verify that every document in their Datasite data room is fit to share with buyers before going live. You check for six categories of quality issues and produce an HTML dashboard with a downloadable Excel report.
+You are helping a deal team flag documents in their Datasite data room that may not be fit to share with buyers before going live. You run 12 checks — 9 based on project metadata and 3 that read document content — and produce an HTML dashboard with a downloadable Excel report.
 
 ---
 
@@ -37,42 +37,44 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
-| Failed / unprocessable files (status metadata) | ✅ | — |
-| Placeholder and stub documents (type metadata) | ✅ | — |
-| Wrong file formats (fileType metadata) | ✅ | — |
-| Uninformative filenames (name pattern matching) | ✅ | — |
-| Version conflicts (name pattern matching) | ✅ | — |
-| Duplicate documents (name + metadata comparison) | ✅ | — |
-| Stale documents (upload date metadata) | ✅ | — |
-| PII exposure in document content | — | ✅ |
-| Redaction quality check | — | ✅ |
-| Broken references and missing exhibits | — | ✅ |
+| Check 1 — Failed / unprocessable files (status metadata) | ✅ | — |
+| Check 2 — Blank or near-blank documents (page count and file size metadata) | ✅ | — |
+| Check 3 — Redaction quality (redaction flag metadata + content search) | — | ✅ |
+| Check 4 — PII exposure in document content | — | ✅ |
+| Check 5 — Possibly incomplete scans (page count metadata) | ✅ | — |
+| Check 6 — Placeholder and stub documents (type and name metadata) | ✅ | — |
+| Check 7 — Duplicate documents (name, size and page count metadata) | ✅ | — |
+| Check 8 — Version conflicts (name pattern matching) | ✅ | — |
+| Check 9 — Wrong file formats (file type metadata) | ✅ | — |
+| Check 10 — Stale documents (upload date metadata) | ✅ | — |
+| Check 11 — Broken references and missing exhibits | — | ✅ |
+| Check 12 — Uninformative filenames (name pattern matching) | ✅ | — |
 
-**Without Blueflame:** 7 of 10 checks run fully using `listFolderContents` metadata. The three content-level checks (PII, redaction quality, broken references) are skipped — note these in the report as "Requires Blueflame."
+**Without AI document search access:** Runs metadata-based checks using available names, file types, dates, counts and processing status where returned. These 9 checks cannot confirm that a document is readable or complete. The three content-level checks (PII, redaction quality, broken references) are skipped — mark these in the report as "NOT RUN — requires AI document search access."
 
-**With Blueflame:** All 10 checks run. `searchDocuments` scans document content for PII patterns, verifies redaction quality, and finds broken cross-references inside documents.
+**With AI document search access:** Potential PII, redaction and broken-reference checks use document search through `searchDocuments`. Results are review flags, not a validated PII scan, proof of secure redaction, or an automated redaction action.
 
 
 
-> ⚠️ **Blueflame fallback — two-tier behaviour**
+> ⚠️ **AI document search fallback — two-tier behaviour**
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** infer document content, PII presence, or redaction quality from Claude’s training knowledge.
-> - **Phase A** (Checks 1–7, metadata checks) uses `listFolderContents` only — always free. Complete Phase A fully first.
-> - **Phase B** (Checks 8–10: PII scan, redaction quality, broken references) requires `searchDocuments`. When you reach Phase B, attempt one call. If it returns an **activation link** instead of results:
->   1. **Do not generate the HTML dashboard yet** — ask the Blueflame question first as a plain conversational message
+> - **Phase A** (the 9 metadata checks — Checks 1, 2, 5–10 and 12) uses `listFolderContents` only — no AI document search required. Complete Phase A fully first.
+> - **Phase B** (Checks 3, 4 and 11: redaction quality, PII scan, broken references) requires `searchDocuments`. When you reach Phase B, attempt one call. If it returns an **activation link** instead of results:
+>   1. **Do not generate the HTML dashboard yet** — ask the AI document search question first as a plain conversational message
 >   2. Summarise Phase A findings in plain text (e.g. "I found X password-protected files, Y duplicates, Z files with no extension")
 >   3. Then ask:
 >
->   > "I’ve completed the 7 metadata checks — here’s what I found: [plain text summary]. To also run PII scanning, redaction quality checks, and broken reference detection, Blueflame AI search needs to be activated on this project:
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I’ll scan document content for exposed personal data (names, NI numbers, bank details), verify that redacted text can’t be read in the file layer, and check for broken cross-references inside documents — the checks buyers and their lawyers look for most.
+>   > "I’ve completed the 9 metadata checks — here’s what I found: [plain text summary]. To also run PII scanning, redaction quality checks, and broken reference detection, AI document search access needs to be enabled for this project:
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I’ll search document content for potentially exposed personal data (names, NI numbers, bank details), flag documents where redacted text may still be readable, and check for broken cross-references inside documents. These are review flags for your team to validate, not a certified PII scan.
 >   > Would you like to activate now, or shall I produce the dashboard with the Phase A findings only?"
 >
 >   4. **Wait for the user’s response before producing any dashboard or output file.**
 >
-> Do not embed the Blueflame activation prompt inside the HTML dashboard — it must appear as an interactive conversational question before any output is generated.
+> Do not embed the AI document search activation prompt inside the HTML dashboard — it must appear as an interactive conversational question before any output is generated.
 
 > **`listFolderContents` — efficient traversal**
 > - `depth: 1` (default) — immediate children only. Use for targeted lookups.
@@ -95,6 +97,8 @@ Call `listFolderContents` without a metadataId to get all filerooms, then recurs
 
 From the inventory, flag:
 - `status: FAILED` or `PROCESSING` → Check 1 (unprocessable)
+- `pageCount` under 2 and `fileSize` under 50KB → Check 2 (blank or near-blank)
+- `pageCount` well below what the document type needs → Check 5 (possibly incomplete scan)
 - `type: PLACEHOLDER` → Check 6 (placeholder/stub)
 - `fileType` in [xlsm, xlsb, zip, rar, msg, eml, pages, numbers, key, dwg] → Check 9 (wrong format)
 - Name patterns: Scan/IMG/Document/Untitled/Copy of/FINAL_FINAL/USE THIS/DO NOT USE → Check 12 (bad filenames)
@@ -384,7 +388,7 @@ Count issues by severity and check type for the dashboard scorecard.
 
 Before generating anything, ask:
 
-> "I've completed the quality checks. Would you like me to produce the HTML dashboard with the full findings and an Excel export? It uses additional credits to render. Alternatively I can give you a plain text summary here."
+> "I've completed the quality checks. Would you like me to produce the HTML dashboard with the full findings and an Excel export? AI document search requires the appropriate Datasite entitlement. Usage charges may apply based on the customer's Datasite plan and the AI application they are using. Alternatively I can give you a plain text summary here."
 
 Only generate the dashboard if the user confirms. If they decline, go to Step 5 and deliver a plain text summary.
 
@@ -468,7 +472,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.

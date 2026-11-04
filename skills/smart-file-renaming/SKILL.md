@@ -13,7 +13,7 @@ description: >
   Never rename files without explicit user confirmation.
 metadata:
   author: Blueflame AI
-  version: 1.0.0
+  version: 1.1.0
   mcp-server: datasite
   category: deal-management
   tags: [datasite, vdr, m&a, renaming, file-management, blueflame]
@@ -39,27 +39,27 @@ When in doubt: if it is not the single top-level container for the whole project
 
 ## Feature Requirements
 
-| Capability | Free | Requires Blueflame |
+| Capability | MCP core operations (no AI document search required) | Requires AI document search access |
 |---|:---:|:---:|
 | Rename from folder context and filename | ✅ | — |
 | Apply naming conventions across all document types | ✅ | — |
-| Read inside documents to infer year, counterparty, or jurisdiction | — | ✅ |
+| Read inside documents to identify year, counterparty, or jurisdiction | — | ✅ |
 
-**Without Blueflame:** Renames are based on folder context and filename patterns only. Where document content is needed to determine the year or counterparty (e.g. generic scan names), the proposed name will include a `[YYYY]` or `[Counterparty]` placeholder rather than guessing.
+**Without AI document search access:** Suggests consistent names from filenames and folder context; renames are applied only after user confirmation. Where key details are missing (e.g. generic scan names), the proposed name uses a `[YYYY]`, `[Counterparty]` or `[Jurisdiction]` placeholder rather than guessing.
 
-**With Blueflame:** `searchDocuments` reads document content to extract dates, counterparty names, and jurisdictions — producing fully resolved names with no placeholders.
+**With AI document search access:** Reading inside files to identify counterparties, dates or jurisdictions requires permissioned document search through `searchDocuments`. This resolves more names, but some ambiguous filenames may still need a placeholder or manual review.
 
 
 
-> ⚠️ **Blueflame fallback — explicit choice required**
+> ⚠️ **AI document search fallback — explicit choice required**
 > `searchDocuments` is the only permitted source of document content.
 > - Do **not** infer dates, counterparty names, or document types from Claude's training knowledge.
 > - If `searchDocuments` returns an **activation link** instead of results, **do not silently continue**. Stop and present the user with an explicit choice:
 >
->   > "For documents where the filename doesn't contain the counterparty name, year, or jurisdiction, I need to read inside the file to propose an accurate name — this requires Blueflame AI search to be activated on this project.
->   > 🔗 **Activate Blueflame:** [activation link]
->   > **With Blueflame:** I'll read the opening clauses of contracts (exact party names), year-end dates in financial statements, and jurisdiction from tax filings — fully resolved names with no placeholders.
->   > **Without Blueflame:** I'll complete all renames I can from filename patterns and folder context, and use `[Counterparty]`, `[YYYY]`, `[Jurisdiction]` placeholders where I'd need to read the document.
+>   > "For documents where the filename doesn't contain the counterparty name, year, or jurisdiction, I need to read inside the file to propose an accurate name — this requires AI document search access on this project.
+>   > 🔗 **Enable AI document search:** [activation link]
+>   > **With AI document search access:** I'll read the opening clauses of contracts (exact party names), year-end dates in financial statements, and jurisdiction from tax filings, so more names can be fully resolved. Any I still can't confirm will keep a placeholder.
+>   > **Without AI document search access:** I'll complete all renames I can from filename patterns and folder context, and use `[Counterparty]`, `[YYYY]`, `[Jurisdiction]` placeholders where I'd need to read the document.
 >   > Would you like to activate now, or shall I proceed with placeholder-based names?"
 >
 >   Wait for the user's response before continuing.
@@ -240,7 +240,7 @@ Check that the Datasite MCP connector is connected (Settings → Extensions → 
 The fileroom may be empty or unpublished. Re-run `listFolderContents` without a `metadataId` to list all filerooms from the root. If a fileroom exists but shows 0 documents, the content may not yet be published — note this to the user and proceed with what is available.
 
 **`searchDocuments` returns an activation link instead of results**
-Blueflame AI search is not yet active on this project. Follow the Blueflame prompt in the skill instructions above. Do not attempt to answer using Claude's training knowledge.
+AI document search access is not enabled for this project. Follow the AI document search prompt in the Feature Requirements section above. Do not attempt to answer using Claude's training knowledge.
 
 **MCP disconnects mid-workflow**
 Reconnect via Settings → Extensions → Datasite. Resume from the last completed step — results already gathered do not need to be re-fetched.
